@@ -116,6 +116,7 @@ function setupShaders() {
  * Populate buffers with data
  */
 function setupBuffers() {
+  // upVertexPositionBuffer is the upper part of the uofi badge.
   upVertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, upVertexPositionBuffer);
   var upVertices = [
@@ -161,6 +162,8 @@ function setupBuffers() {
 
 
   ];
+
+  // Resize the coordinate. Shrink from 12*12 to 1*1.
   for(i=0 ; i<upVertices.length ; i+=3){
     upVertices[i] /= convertCoordinate;
     upVertices[i+1] /= convertCoordinate;
@@ -209,8 +212,8 @@ function setupBuffers() {
   upVertexColorBuffer.itemSize = 4;
   upVertexColorBuffer.numItems = 30;  
 
-  //////////down//////////////
-
+  
+  // downVertexPositionBuffer is the bottom part of the uofi badge.  
   downVertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, downVertexPositionBuffer);
   var downVertices = [
@@ -265,6 +268,7 @@ function setupBuffers() {
 
   ];
   
+  // Resize the coordinate. Shrink from 12*12 to 1*1.
   for(i=0 ; i<downVertices.length ; i+=3){
     downVertices[i] /= convertCoordinate;
     downVertices[i+1] /= convertCoordinate;
@@ -328,6 +332,8 @@ function draw() {
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clear(gl.COLOR_BUFFER_BIT| gl.DEPTH_BUFFER_BIT);
   gl.clearColor(0,0,0,0);
+  
+  // The animation of the upper part is rotate along the y-axis.
   mat4.identity(mvMatrix);
   mat4.rotateY(mvMatrix, mvMatrix, degToRad(rotAngle)); 
 
@@ -343,9 +349,9 @@ function draw() {
 
   gl.drawArrays(gl.TRIANGLES, 0, upVertexPositionBuffer.numberOfItems );
   
-  ///////down part///////
+  // Draw the upper part first, then bind the buffer to draw the bottom part of the badge. 
   mat4.identity(mvMatrix);
-  //mat4.rotateX(mvMatrix, mvMatrix, degToRad(rotAngle)); 
+
   gl.bindBuffer(gl.ARRAY_BUFFER, downVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
                          downVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -372,6 +378,8 @@ function animate() {
     }
     lastTime = timeNow;
 
+
+    // Change the position of the buffer to make the bottom part wiggle like snakes.
     sinscalar += 0.05;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, downVertexPositionBuffer);
@@ -394,11 +402,11 @@ function animate() {
   
            -2.4,-5,0,
            -0.4,-5,0,
-           -0.4,-11.5+Math.sin(sinscalar+1)*0.3,0,
+           -0.4,-11.5+Math.sin(sinscalar+1)*0.4,0,
   
            -2.4,-5,0,
            -2.4,-10+Math.sin(sinscalar+1)*0.8,0,
-           -0.4,-11.5+Math.sin(sinscalar+1)*0.3,0,
+           -0.4,-11.5+Math.sin(sinscalar+1)*0.4,0,
   
            8,-5,0,
            6,-5,0,
@@ -418,15 +426,16 @@ function animate() {
   
            2.4,-5,0,
            0.4,-5,0,
-           0.4,-11.5+Math.sin(sinscalar+2.5)*0.3,0,
+           0.4,-11.5+Math.sin(sinscalar+2.5)*0.4,0,
   
            2.4,-5,0,
            2.4,-10+Math.sin(sinscalar+2.5)*0.8,0,
-           0.4,-11.5+Math.sin(sinscalar+2.5)*0.3,0
+           0.4,-11.5+Math.sin(sinscalar+2.5)*0.4,0
   
   
     ];
     
+    // Resize the coordinate. Shrink from 12*12 to 1*1.
     for(i=0 ; i<downVertices.length ; i+=3){
       downVertices[i] /= convertCoordinate;
       downVertices[i+1] /= convertCoordinate;
