@@ -1,3 +1,7 @@
+var mapSize=0;
+var height;
+
+
 /**
  * Iteratively generate terrain from numeric inputs
  * @param {number} n
@@ -12,6 +16,25 @@
  */
 function terrainFromIteration(n, minX,maxX,minY,maxY, vertexArray, faceArray,normalArray)
 {
+
+    height =new Array(n+1);
+    for(i=0 ; i<=n ; i++){
+        height[i]=new Array(n+1);
+    }
+    for(i=0;i<=n;i++)
+        for(j=0;j<=n;j++)
+            height[i][j]=0;
+
+            
+    height[0][0]=0.1;
+    height[n][0]=0.1;
+    height[0][n]=0.1;
+    height[n][n]=0.1;
+    
+    mapSize = n;
+    diamondSquare(mapSize);
+
+
     var deltaX=(maxX-minX)/n;
     var deltaY=(maxY-minY)/n;
     for(var i=0;i<=n;i++)
@@ -19,11 +42,14 @@ function terrainFromIteration(n, minX,maxX,minY,maxY, vertexArray, faceArray,nor
        {
            vertexArray.push(minX+deltaX*j);
            vertexArray.push(minY+deltaY*i);
-           vertexArray.push(0);
+           vertexArray.push(height[j][i]);
            
-           normalArray.push(0);
-           normalArray.push(0);
-           normalArray.push(1);
+           var normal = vec3.fromValues(minX+deltaX*j,minY+deltaY*i,height[j][i]);
+           vec3.normalize(normal,normal);
+
+           normalArray.push(normal[0]);
+           normalArray.push(normal[1]);
+           normalArray.push(normal[2]); 
        }
 
     var numT=0;
@@ -64,4 +90,48 @@ function generateLinesFromIndexedTriangles(faceArray,lineArray)
     }
 }
 
+function diamondSquare(size)
+{       
+    var halfSize = size/2;
+    if(halfSize<1)
+        return;
+
+    for(x=halfSize;x<mapSize;x+=size)
+        for(y=halfSize;y<mapSize;y+=size)
+        {
+            square(x,y,halfSize);
+        }
+    
+    for(x=0;x<=mapSize;x+=halfSize)
+        for(y= (x+halfSize) %size ; y<=mapSize ; y+=size )
+        {
+            diamond(x,y,halfSize);
+        }
+
+    diamondSquare(halfSize);
+
+
+}
+
+function square(x,y,offset){
+    height[x][y] = Math.random() * offset *0.01 + ( getArrayValue(x+offset,y+offset) + getArrayValue(x+offset,y-offset) + getArrayValue(x-offset,y+offset) + getArrayValue(x-offset,y-offset) )/4;
+}
+
+function diamond(x,y,offset){
+    var scale = 0.005*offset;
+    height[x][y] = Math.random() * offset * 0.01 + ( getArrayValue(x+offset,y) + getArrayValue(x-offset,y) + getArrayValue(x,y+offset) + getArrayValue(x,y-offset))/4;
+}
+
+function getArrayValue(x,y){
+    /* if( x<0 || y<0 )
+        return 0; */
+    if(x<0 &&y<0)
+        return height[mapSize+1+x][mapSize+1+y];
+    else if(x<0 && y>=0)
+         return height[mapSize+1+x][y%(mapSize+1)];
+    else if(x>=0 && y<0)
+        return height[x%(mapSize+1)][mapSize+1+y];
+    else
+        return height[x%(mapSize+1)][y%(mapSize+1)];
+}
 

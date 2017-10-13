@@ -17,7 +17,7 @@ var tIndexTriBuffer;
 var tIndexEdgeBuffer;
 
 // View parameters
-var eyePt = vec3.fromValues(0.0,0.0,0.0);
+var eyePt = vec3.fromValues(0,0,0);
 var viewDir = vec3.fromValues(0.0,0.0,-1.0);
 var up = vec3.fromValues(0.0,1.0,0.0);
 var viewPt = vec3.fromValues(0.0,0.0,0.0);
@@ -44,7 +44,7 @@ function setupTerrainBuffers() {
     var fTerrain=[];
     var nTerrain=[];
     var eTerrain=[];
-    var gridN=20;
+    var gridN=128;
     
     var numT = terrainFromIteration(gridN, -1,1,-1,1, vTerrain, fTerrain, nTerrain);
     console.log("Generated ", numT, " triangles"); 
