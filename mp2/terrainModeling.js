@@ -1,5 +1,7 @@
 var mapSize=0;
 var height;
+var minHeight=10;
+var maxHeight=-10;
 
 
 /**
@@ -90,6 +92,10 @@ function generateLinesFromIndexedTriangles(faceArray,lineArray)
     }
 }
 
+/**
+ * Use the diamond square algorithm to calculate the value of the terrain height.
+ * @param {number} size the length of the square which is used in the algorithm.
+ */
 function diamondSquare(size)
 {       
     var halfSize = size/2;
@@ -113,25 +119,81 @@ function diamondSquare(size)
 
 }
 
+/**
+ * Square part in the algorithm
+ * @param {number} x the x of the square center
+ * @param {number} y the y of the square center
+ * @param {number} offset the offset from the (x,y) point
+ */
 function square(x,y,offset){
-    height[x][y] = Math.random() * offset *0.01 + ( getArrayValue(x+offset,y+offset) + getArrayValue(x+offset,y-offset) + getArrayValue(x-offset,y+offset) + getArrayValue(x-offset,y-offset) )/4;
+    height[x][y] = Math.random() * offset *0.006 * (Math.random()>0.5 ? 1 : -1) + average( [getArrayValue(x+offset,y+offset), getArrayValue(x+offset,y-offset) ,getArrayValue(x-offset,y+offset) , getArrayValue(x-offset,y-offset)] );
 }
 
+/**
+ * Diamond part in the algorithm
+ * @param {number} x the x of the diamond center
+ * @param {number} y the y of the diamond center
+ * @param {number} offset the offset from the (x,y) point
+ */
 function diamond(x,y,offset){
-    var scale = 0.005*offset;
-    height[x][y] = Math.random() * offset * 0.01 + ( getArrayValue(x+offset,y) + getArrayValue(x-offset,y) + getArrayValue(x,y+offset) + getArrayValue(x,y-offset))/4;
+    height[x][y] = Math.random() * offset * 0.006 * (Math.random()>0.5 ? 1 : -1) + average([ getArrayValue(x+offset,y) , getArrayValue(x-offset,y) , getArrayValue(x,y+offset) , getArrayValue(x,y-offset)]);
+}
+
+/**
+ * Return the array average value
+ * @param {array} values 
+ */
+function average(values)
+{
+    var sum=0;
+    var count=4;
+    for(i=0;i<values.length;i++){
+        if(values[i]==-1)
+        {
+            count--;
+            continue;
+        }
+        sum += values[i];
+    }
+
+    return sum/count;
 }
 
 function getArrayValue(x,y){
-    /* if( x<0 || y<0 )
-        return 0; */
-    if(x<0 &&y<0)
-        return height[mapSize+1+x][mapSize+1+y];
-    else if(x<0 && y>=0)
-         return height[mapSize+1+x][y%(mapSize+1)];
-    else if(x>=0 && y<0)
-        return height[x%(mapSize+1)][mapSize+1+y];
+    if( x<0 || y<0 || x>mapSize || y>mapSize)
+        return -1;
     else
-        return height[x%(mapSize+1)][y%(mapSize+1)];
+        return height[x][y];
 }
 
+function setMinMaxHeight()
+{
+    var min=10;
+    var max=-10;
+    for(i=0;i<height.length;i++)
+      for(j=0;j<height.length;j++)
+      {
+        if(height[i][j]>max)
+          max = height[i][j];
+        if(height[i][j]<min)
+          min = height[i][j];
+      }
+
+    minHeight = min;
+    maxHeight = max;
+
+    console.log(min);
+    console.log(max);
+}
+
+function getMin(){
+    return minHeight;
+}
+
+function getMax(){
+    return maxHeight;
+}
+
+function getHeightArray(){
+    return height;
+}

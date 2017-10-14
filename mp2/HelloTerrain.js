@@ -78,6 +78,9 @@ function setupTerrainBuffers() {
                   gl.STATIC_DRAW);
      tIndexEdgeBuffer.itemSize = 1;
      tIndexEdgeBuffer.numItems = eTerrain.length;
+
+
+     setMinMaxHeight();
     
      
 }
@@ -295,6 +298,8 @@ function setupShaders() {
   shaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientLightColor");  
   shaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseLightColor");
   shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
+  shaderProgram.uniformMinHeight = gl.getUniformLocation(shaderProgram,"uMin");
+  shaderProgram.uniformMaxHeight = gl.getUniformLocation(shaderProgram,"uMax");
 }
 
 
@@ -349,7 +354,7 @@ function draw() {
     
     if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked))
     {
-      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[1.0,0.5,0.0],[0.0,0.0,0.0]);
+      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]);
       drawTerrain();
     }
     
@@ -362,6 +367,10 @@ function draw() {
       uploadLightsToShader([0,1,1],[1.0,1.0,1.0],[0.0,0.0,0.0],[0.0,0.0,0.0]);
       drawTerrainEdges();
     }
+
+    gl.uniform1f(shaderProgram.uniformMinHeight, getMin());
+    gl.uniform1f(shaderProgram.uniformMaxHeight, getMax());
+
     mvPopMatrix();
   
 }
