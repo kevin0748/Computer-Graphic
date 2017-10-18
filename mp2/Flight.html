@@ -91,6 +91,8 @@
 
         float specularLightWeightning = pow(ndoth, shininess);
 
+        //vec3 vAmbientLightColor = vec3(vHeightColor.x,vHeightColor.y,vHeightColor.z);
+
         vColor = vec4((uAmbientLightColor
                    + vHeightColor * diffuseLightWeightning
                     + uSpecularLightColor * specularLightWeightning),1.0);

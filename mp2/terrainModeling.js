@@ -44,14 +44,10 @@ function terrainFromIteration(n, minX,maxX,minY,maxY, vertexArray, faceArray,nor
        {
            vertexArray.push(minX+deltaX*j);
            vertexArray.push(minY+deltaY*i);
-           vertexArray.push(height[j][i]);
-           
-           var normal = vec3.fromValues(minX+deltaX*j,minY+deltaY*i,height[j][i]);
-           vec3.normalize(normal,normal);
-
-           normalArray.push(normal[0]);
-           normalArray.push(normal[1]);
-           normalArray.push(normal[2]); 
+           vertexArray.push(height[j][i]);   
+           normalArray.push (0);
+           normalArray.push (0);
+           normalArray.push (0); 
        }
 
     var numT=0;
@@ -63,11 +59,62 @@ function terrainFromIteration(n, minX,maxX,minY,maxY, vertexArray, faceArray,nor
            faceArray.push(vid+1);
            faceArray.push(vid+n+1);
            
+           var n1 = vid;
+           var n2 = vid+1;
+           var n3 = vid+n+1;
+           var v1 = vec3.fromValues(vertexArray[n1*3],vertexArray[n1*3+1],vertexArray[n1*3+2]);
+           var v2 = vec3.fromValues(vertexArray[n2*3],vertexArray[n2*3+1],vertexArray[n2*3+2]);
+           var v3 = vec3.fromValues(vertexArray[n3*3],vertexArray[n3*3+1],vertexArray[n3*3+2]);
+
+           var v2v1 = vec3.create();
+           var v3v1 = vec3.create();
+           var nv   = vec3.create();
+           vec3.subtract(v2v1,v2,v1);
+           vec3.subtract(v3v1,v3,v1);
+           vec3.cross(nv , v2v1 , v3v1);
+           vec3.normalize(nv,nv);
+           normalArray[n1*3] = nv[0];
+           normalArray[n1*3+1] = nv[1];
+           normalArray[n1*3+2] = nv[2];
+           normalArray[n2*3] = nv[0];
+           normalArray[n2*3+1] = nv[1];
+           normalArray[n2*3+2] = nv[2];
+           normalArray[n3*3] = nv[0];
+           normalArray[n3*3+1] = nv[1];
+           normalArray[n3*3+2] = nv[2];
+
+
+           
            faceArray.push(vid+1);
            faceArray.push(vid+1+n+1);
            faceArray.push(vid+n+1);
+
+           n1 = vid+1;
+           n2 = vid+1+n+1;
+           n3 = vid+n+1;
+           v1 = vec3.fromValues(vertexArray[n1*3],vertexArray[n1*3+1],vertexArray[n1*3+2]);
+           v2 = vec3.fromValues(vertexArray[n2*3],vertexArray[n2*3+1],vertexArray[n2*3+2]);
+           v3 = vec3.fromValues(vertexArray[n3*3],vertexArray[n3*3+1],vertexArray[n3*3+2]);
+
+           vec3.subtract(v2v1,v2,v1);
+           vec3.subtract(v3v1,v3,v1);
+           vec3.cross(nv , v2v1 , v3v1);
+           vec3.normalize(nv,nv);
+           normalArray[n1*3] = nv[0];
+           normalArray[n1*3+1] = nv[1];
+           normalArray[n1*3+2] = nv[2];
+           normalArray[n2*3] = nv[0];
+           normalArray[n2*3+1] = nv[1];
+           normalArray[n2*3+2] = nv[2];
+           normalArray[n3*3] = nv[0];
+           normalArray[n3*3+1] = nv[1];
+           normalArray[n3*3+2] = nv[2];
+
            numT+=2;
        }
+
+    
+
     return numT;
 }
 /**

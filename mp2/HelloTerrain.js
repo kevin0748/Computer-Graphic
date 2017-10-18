@@ -354,7 +354,7 @@ function draw() {
     
     if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked))
     {
-      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]);
+      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[1.0,1.0,1.0]);
       drawTerrain();
     }
     
