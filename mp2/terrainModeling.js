@@ -206,6 +206,11 @@ function average(values)
     return sum/count;
 }
 
+/**
+ * Return the array value if the index exists.
+ * @param {number} x index
+ * @param {number} y index
+ */
 function getArrayValue(x,y){
     if( x<0 || y<0 || x>mapSize || y>mapSize)
         return -1;
@@ -213,6 +218,11 @@ function getArrayValue(x,y){
         return height[x][y];
 }
 
+/**
+ * Set the min and max value to variable.
+ * @param {number} x index
+ * @param {number} y index
+ */
 function setMinMaxHeight()
 {
     var min=10;

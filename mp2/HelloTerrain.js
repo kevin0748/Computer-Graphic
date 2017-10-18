@@ -295,8 +295,6 @@ function setupShaders() {
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
   shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
   shaderProgram.uniformLightPositionLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");    
-  shaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientLightColor");  
-  shaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseLightColor");
   shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
   shaderProgram.uniformMinHeight = gl.getUniformLocation(shaderProgram,"uMin");
   shaderProgram.uniformMaxHeight = gl.getUniformLocation(shaderProgram,"uMax");
@@ -313,8 +311,6 @@ function setupShaders() {
  */
 function uploadLightsToShader(loc,a,d,s) {
   gl.uniform3fv(shaderProgram.uniformLightPositionLoc, loc);
-  gl.uniform3fv(shaderProgram.uniformAmbientLightColorLoc, a);
-  gl.uniform3fv(shaderProgram.uniformDiffuseLightColorLoc, d);
   gl.uniform3fv(shaderProgram.uniformSpecularLightColorLoc, s);
 }
 
@@ -352,21 +348,9 @@ function draw() {
     mat4.rotateZ(mvMatrix, mvMatrix, degToRad(25));     
     setMatrixUniforms();
     
-    if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked))
-    {
-      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[1.0,1.0,1.0]);
-      drawTerrain();
-    }
-    
-    if(document.getElementById("wirepoly").checked){
-      uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]);
-      drawTerrainEdges();
-    }
+    uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[1.0,1.0,1.0]);
+    drawTerrain();
 
-    if(document.getElementById("wireframe").checked){
-      uploadLightsToShader([0,1,1],[1.0,1.0,1.0],[0.0,0.0,0.0],[0.0,0.0,0.0]);
-      drawTerrainEdges();
-    }
 
     gl.uniform1f(shaderProgram.uniformMinHeight, getMin());
     gl.uniform1f(shaderProgram.uniformMaxHeight, getMax());

@@ -55,8 +55,6 @@
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
     uniform vec3 uLightPosition;
-    uniform vec3 uAmbientLightColor;
-    uniform vec3 uDiffuseLightColor;
     uniform vec3 uSpecularLightColor;
 
     varying vec3 vNormal;
@@ -91,7 +89,7 @@
 
         float specularLightWeightning = pow(ndoth, shininess);
 
-        //vec3 vAmbientLightColor = vec3(vHeightColor.x,vHeightColor.y,vHeightColor.z);
+        vec3 uAmbientLightColor = vec3(vHeightColor.x/10.0,vHeightColor.y/10.0,vHeightColor.z/10.0);
 
         vColor = vec4((uAmbientLightColor
                    + vHeightColor * diffuseLightWeightning
@@ -109,14 +107,6 @@
 <script src="HelloTerrain.js"></script>   
 <body onload="startup();">
  <canvas id="myGLCanvas" width="800" height="800"></canvas>
-    <form id="input_form">
-        <fieldset>
-            <legend>Rendering Parameters</legend>
-         <input type="radio" name="primitive" id="wireframe" value="wireframe"> Wireframe
-         <input type="radio" name="primitive" id="polygon" id="polygon" value="polygon"> Polygon
-         <input type="radio" name="primitive" id="wirepoly" value="wirepoly" checked > Polygon with Edges  
-        </fieldset>
-        </form>
 </body>
 
 </html>
