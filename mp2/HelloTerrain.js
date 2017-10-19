@@ -33,6 +33,8 @@ var pMatrix = mat4.create();
 
 var mvMatrixStack = [];
 
+var moveSpeed = 1;
+
 
 //-------------------------------------------------------------------------
 /**
@@ -348,7 +350,7 @@ function draw() {
     mat4.rotateZ(mvMatrix, mvMatrix, degToRad(25));     
     setMatrixUniforms();
     
-    uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[1.0,1.0,1.0]);
+    uploadLightsToShader([0,1,1],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.5,0.5,0.5]);
     drawTerrain();
 
 
@@ -364,7 +366,8 @@ function draw() {
  * Animation to be called from tick. Updates globals and performs animation for each tick.
  */
 function animate() {
-   
+   var move = vec3.fromValues(viewDir[0]/1000.0*moveSpeed,viewDir[1]/1000.0*moveSpeed,viewDir[2]/1000.0*moveSpeed);
+   vec3.add(eyePt,eyePt,move);
 }
 
 //----------------------------------------------------------------------------------
@@ -378,6 +381,7 @@ function animate() {
   setupBuffers();
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
+  keyboardBinding();
   tick();
 }
 
@@ -391,3 +395,102 @@ function tick() {
     animate();
 }
 
+function keyboardBinding(){
+  document.addEventListener('keydown', function(event) {
+    // left
+    if (event.keyCode == 37) {
+        row(1);
+
+    }
+    // right
+    else if (event.keyCode == 39) {
+        row(-1);
+    }
+    // up
+    else if (event.keyCode == 38) {
+        pitch(1);
+        
+    }
+    // down
+    else if (event.keyCode == 40) {
+        pitch(-1);
+        
+    }
+    // +
+    else if (event.keyCode == 187){
+      speed(1);
+    }
+    // -
+    else if (event.keyCode == 189){
+      speed(-1);
+    }
+}, true);
+}
+
+function row(direction){
+
+  // ROLL
+  var deg = degToRad(1/2*direction);
+  var sinDeg = Math.sin(deg);
+
+  var qVector = vec3.clone(viewDir);
+  vec3.normalize(qVector,qVector);
+  var degVector = vec3.fromValues(sinDeg,sinDeg,sinDeg);
+  vec3.multiply(qVector,qVector, degVector);
+  var qQuat = quat.fromValues(qVector[0],qVector[1],qVector[2],Math.cos(deg));
+
+  var qQuatInv = quat.create();
+  quat.invert(qQuatInv,qQuat);
+
+  var upVector = vec3.clone(up);
+  vec3.normalize(upVector,upVector);
+  var upQuat = quat.fromValues(upVector[0],upVector[1],upVector[2],0);
+  quat.multiply(qQuat,qQuat,upQuat);
+  quat.multiply(qQuat,qQuat,qQuatInv);
+  up = vec3.fromValues(qQuat[0],qQuat[1],qQuat[2]);
+}
+
+
+function pitch(direction){
+  
+  // Pitch
+  var deg = degToRad(-1/2 * direction);
+  var sinDeg = Math.sin(deg);
+
+  var wingVector = vec3.create();
+  vec3.cross(wingVector,up,viewDir);
+  vec3.normalize(wingVector,wingVector);
+  var qVector = vec3.clone(wingVector);
+  vec3.normalize(qVector,qVector);
+  var degVector = vec3.fromValues(sinDeg,sinDeg,sinDeg);
+  vec3.multiply(qVector,qVector, degVector);
+  var qQuat = quat.fromValues(qVector[0],qVector[1],qVector[2],Math.cos(deg));
+
+  var qQuatInv = quat.create();
+  quat.invert(qQuatInv,qQuat);
+
+  var upVector = vec3.clone(up);
+  vec3.normalize(upVector,upVector);
+  var upQuat = quat.fromValues(upVector[0],upVector[1],upVector[2],0);
+  quat.multiply(qQuat,qQuat,upQuat);
+  quat.multiply(qQuat,qQuat,qQuatInv);
+  up = vec3.fromValues(qQuat[0],qQuat[1],qQuat[2]);  
+
+  var dirVector = vec3.clone(viewDir);
+  vec3.normalize(dirVector,dirVector);
+  var dirQuat = quat.fromValues(dirVector[0],dirVector[1],dirVector[2],0);
+  qQuat = quat.fromValues(qVector[0],qVector[1],qVector[2],Math.cos(deg));
+  quat.multiply(qQuat,qQuat,dirQuat);
+  quat.multiply(qQuat,qQuat,qQuatInv);
+  viewDir = vec3.fromValues(qQuat[0],qQuat[1],qQuat[2]); 
+}
+
+function speed(speed){
+  if(speed == 1){
+    moveSpeed = moveSpeed * 1.1;
+  }
+  else if(speed == -1){
+    moveSpeed = moveSpeed * 0.9;
+  }
+
+}
