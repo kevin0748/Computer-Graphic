@@ -95,18 +95,46 @@
                    + vHeightColor * diffuseLightWeightning
                     + uSpecularLightColor * specularLightWeightning),1.0);
 
-
-        gl_FragColor = vColor;
+        // Add fog to terrain
+        vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);        
+        const float LOG2 = 1.442695;
+        float z = gl_FragCoord.z / gl_FragCoord.w * 900.0;
+        float fogDensity = 0.0005;        
+        float fogFactor = exp2( -1.0 * fogDensity * fogDensity * z * z * LOG2 ); 
+        fogFactor = clamp(fogFactor, 0.0, 1.0);
+        
+        gl_FragColor = mix(fogColor, vColor, fogFactor );
+        
  }
 </script>
 
 <script src="gl-matrix-min.js"></script> 
 <script src="webgl-utils.js"></script>
-<script src="simpleModeling.js"></script>   
 <script src="terrainModeling.js"></script>  
 <script src="HelloTerrain.js"></script>   
+<style>
+    canvas{
+        vertical-align: top;
+        display: inline-block;
+    }
+    .introduction{
+        vertical-align: top;
+        display: inline-block;
+        border: 1px solid red;
+        padding: 10px;
+
+    }
+</style>
 <body onload="startup();">
- <canvas id="myGLCanvas" width="800" height="800"></canvas>
+ 
+    <canvas id="myGLCanvas" width="800" height="800"></canvas>
+ 
+    <div class="introduction">
+        <h3>Control Row: left arrow and right arrow</h3>
+        <h3>Control Pitch: up arrow and down arrow</h3>
+        <h3>Control Speed: '+' and '-'</h3>
+    </div>
+
 </body>
 
 </html>

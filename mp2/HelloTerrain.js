@@ -33,6 +33,7 @@ var pMatrix = mat4.create();
 
 var mvMatrixStack = [];
 
+// Use moveSpeed to record the plane speed
 var moveSpeed = 1;
 
 
@@ -333,6 +334,7 @@ function draw() {
   
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0,0,0,0);
 
     // We'll use perspective 
     mat4.perspective(pMatrix,degToRad(45), gl.viewportWidth / gl.viewportHeight, 0.1, 200.0);
@@ -395,12 +397,15 @@ function tick() {
     animate();
 }
 
+//----------------------------------------------------------------------------------
+/**
+ * Capture keyboard for control the movement of the plane.
+ */
 function keyboardBinding(){
   document.addEventListener('keydown', function(event) {
     // left
     if (event.keyCode == 37) {
         row(1);
-
     }
     // right
     else if (event.keyCode == 39) {
@@ -409,12 +414,10 @@ function keyboardBinding(){
     // up
     else if (event.keyCode == 38) {
         pitch(1);
-        
     }
     // down
     else if (event.keyCode == 40) {
         pitch(-1);
-        
     }
     // +
     else if (event.keyCode == 187){
@@ -427,6 +430,11 @@ function keyboardBinding(){
 }, true);
 }
 
+//-------------------------------------------------------------------------
+/**
+ * Control the row of airplane
+ * @param {number} direction 1 means left and -1 means right
+ */
 function row(direction){
 
   // ROLL
@@ -450,7 +458,11 @@ function row(direction){
   up = vec3.fromValues(qQuat[0],qQuat[1],qQuat[2]);
 }
 
-
+//-------------------------------------------------------------------------
+/**
+ * Control the pitch of airplane
+ * @param {number} direction 1 means up and -1 means down
+ */
 function pitch(direction){
   
   // Pitch
@@ -485,6 +497,11 @@ function pitch(direction){
   viewDir = vec3.fromValues(qQuat[0],qQuat[1],qQuat[2]); 
 }
 
+//-------------------------------------------------------------------------
+/**
+ * Calculate the speed
+ * @param {number} speed 1 means fast and -1 means slow
+ */
 function speed(speed){
   if(speed == 1){
     moveSpeed = moveSpeed * 1.1;
