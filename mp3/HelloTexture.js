@@ -3,6 +3,7 @@ var gl;
 var canvas;
 
 var shaderProgram;
+var shaderProgramTea;
 
 // Create a place to store the texture coords for the mesh
 var cubeTCoordBuffer;
@@ -13,11 +14,20 @@ var cubeVertexBuffer;
 // Create a place to store the triangles
 var cubeTriIndexBuffer;
 
+// View parameters
+var eyePt = vec3.fromValues(0.0,0.0,10);
+var viewDir = vec3.fromValues(0.0,0.0,-1.0);
+var up = vec3.fromValues(0.0,1.0,0.0);
+var viewPt = vec3.fromValues(0.0,0.0,0.0);
+
 // Create ModelView matrix
 var mvMatrix = mat4.create();
 
 //Create Projection matrix
 var pMatrix = mat4.create();
+
+// Create the normal
+var nMatrix = mat3.create();
 
 var mvMatrixStack = [];
 
@@ -26,10 +36,103 @@ var mvMatrixStack = [];
 var cubeImage;
 var cubeTexture;
 
+var teapotVertex = [];
+var teapotFaceIndex = [];
+var teapotNormal = [];
+
+var teapotVertexPositionBuffer;
+var teapotVertexNormalBuffer;
+var teapotVertexIndexBuffer;
+
+var loaded = false;
+
+var useCube = true;
+var useTeapot = true;
+
+
 // For animation 
 var then =0;
 var modelXRotationRadians = degToRad(0);
 var modelYRotationRadians = degToRad(0);
+
+function storeTeapot(input) {
+  var lines = input.match(/[^\n\r]+/gi);
+  // console.log(lines);
+  for(var i=0 ; i<lines.length ; i++){
+    var line = lines[i];
+    var words = line.split(/[ ]+/g);
+    // console.log(words);
+    if(words[0] == 'v'){
+      teapotVertex.push(words[1]);
+      teapotVertex.push(words[2]);
+      teapotVertex.push(words[3]);
+    }
+    else if(words[0] == 'f'){
+      teapotFaceIndex.push(words[1]-1);
+      teapotFaceIndex.push(words[2]-1);
+      teapotFaceIndex.push(words[3]-1);
+    }
+  }
+
+  var numVertex = teapotVertex.length/3;
+  var numTris = teapotFaceIndex.length/3;
+
+  var triangleNormal = new Array(numTris);
+  var vertexInTriangle = new Array(numVertex);
+  for (var i = 0 ; i<numVertex ; i++){
+    vertexInTriangle[i] = new Array();
+  } 
+
+  var u = vec3.create();
+  var v = vec3.create();
+
+  for(var i = 0 ; i<teapotFaceIndex.length ; i+=3){
+    var f1 = teapotFaceIndex[i];
+    var f2 = teapotFaceIndex[i+1];
+    var f3 = teapotFaceIndex[i+2];
+    var v1 = vec3.fromValues(teapotVertex[ f1*3 ], teapotVertex[ f1*3 + 1], teapotVertex[ f1*3 + 2]);
+    var v2 = vec3.fromValues(teapotVertex[ f2*3 ], teapotVertex[ f2*3 + 1], teapotVertex[ f2*3 + 2]);
+    var v3 = vec3.fromValues(teapotVertex[ f3*3 ], teapotVertex[ f3*3 + 1], teapotVertex[ f3*3 + 2]);
+    var normal = vec3.create();
+    vec3.subtract(u,v2,v1);
+    vec3.subtract(v,v3,v1);
+    vec3.cross(normal,u,v);
+    vec3.normalize(normal,normal);
+
+    triangleNormal[i] = normal;
+    vertexInTriangle[f1].push(i);
+    vertexInTriangle[f2].push(i);
+    vertexInTriangle[f3].push(i);
+
+  }
+
+  // initialize normal array
+  for(var i=0 ; i<teapotVertex.length ; i++){
+    teapotNormal.push(0);
+  }
+
+  for(var i=0 ; i<numVertex ; i++){
+    var totalNormal = vec3.create();
+    var temp = vec3.create();
+    while(vertexInTriangle[i].length != 0){
+      var current = vertexInTriangle[i].pop();
+      vec3.add(temp, totalNormal, triangleNormal[current]);
+      vec3.copy(totalNormal,temp);
+    }
+    var normalized = vec3.create();
+    vec3.normalize(normalized,totalNormal);
+    teapotNormal[i*3] = normalized[0];
+    teapotNormal[i*3+1] = normalized[1];
+    teapotNormal[i*3+2] = normalized[2];
+
+  }
+
+  setupTeapotBuffers();
+  
+  loaded = true;
+  console.log("buffer loaded success.");
+
+}
 
 /**
  * Sends Modelview matrix to shader
@@ -44,6 +147,17 @@ function uploadModelViewMatrixToShader() {
 function uploadProjectionMatrixToShader() {
   gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, 
                       false, pMatrix);
+}
+
+//-------------------------------------------------------------------------
+/**
+ * Generates and sends the normal matrix to the shader
+ */
+function uploadNormalMatrixToShader() {
+  mat3.fromMat4(nMatrix,mvMatrix);
+  mat3.transpose(nMatrix,nMatrix);
+  mat3.invert(nMatrix,nMatrix);
+  gl.uniformMatrix3fv(shaderProgramTea.nMatrixUniform, false, nMatrix);
 }
 
 /**
@@ -68,9 +182,24 @@ function mvPopMatrix() {
 /**
  * Sends projection/modelview matrices to shader
  */
-function setMatrixUniforms() {
-    uploadModelViewMatrixToShader();
-    uploadProjectionMatrixToShader();
+function setCubeMatrixUniforms() {
+  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+  gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, 
+      false, pMatrix);
+}
+
+function setTeapotMatrixUniforms() {
+  gl.uniformMatrix4fv(shaderProgramTea.mvMatrixUniform, false, mvMatrix);
+  gl.uniformMatrix4fv(shaderProgramTea.pMatrixUniform, 
+      false, pMatrix);
+  uploadNormalMatrixToShader();
+}
+
+function uploadLightsToShader(loc,a,d,s) {
+  gl.uniform3fv(shaderProgramTea.uniformLightPositionLoc, loc);
+  gl.uniform3fv(shaderProgramTea.uniformAmbientLightColorLoc, a);
+  gl.uniform3fv(shaderProgramTea.uniformDiffuseLightColorLoc, d);
+  gl.uniform3fv(shaderProgramTea.uniformSpecularLightColorLoc, s); 
 }
 
 /**
@@ -150,12 +279,49 @@ function loadShaderFromDOM(id) {
   return shader;
 }
 
+function setupShaders(){
+  if(useCube)
+    setupCubeShaders();
+  if(useTeapot)
+    setupTeapotShaders();
+}
+
+function setupTeapotShaders(){
+  vertexShader = loadShaderFromDOM("teapot_shader-vs");
+  fragmentShader = loadShaderFromDOM("teapot_shader-fs");
+
+  shaderProgramTea = gl.createProgram();
+  gl.attachShader(shaderProgramTea, vertexShader);
+  gl.attachShader(shaderProgramTea,fragmentShader);
+  gl.linkProgram(shaderProgramTea);
+
+  if (!gl.getProgramParameter(shaderProgramTea, gl.LINK_STATUS)) {
+    alert("Failed to setup shaders");
+  }
+
+  gl.useProgram(shaderProgramTea);
+
+  shaderProgramTea.vertexPositionAttribute = gl.getAttribLocation(shaderProgramTea, "aVertexPosition");
+  gl.enableVertexAttribArray(shaderProgramTea.vertexPositionAttribute);
+
+  shaderProgramTea.vertexNormalAttribute = gl.getAttribLocation(shaderProgramTea, "aVertexNormal");
+  gl.enableVertexAttribArray(shaderProgramTea.vertexNormalAttribute);
+
+  shaderProgramTea.mvMatrixUniform = gl.getUniformLocation(shaderProgramTea, "uMVMatrix");
+  shaderProgramTea.pMatrixUniform = gl.getUniformLocation(shaderProgramTea, "uPMatrix");
+  shaderProgramTea.nMatrixUniform = gl.getUniformLocation(shaderProgramTea, "uNMatrix");
+  shaderProgramTea.uniformLightPositionLoc = gl.getUniformLocation(shaderProgramTea, "uLightPosition");    
+  shaderProgramTea.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uAmbientLightColor");  
+  shaderProgramTea.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uDiffuseLightColor");
+  shaderProgramTea.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uSpecularLightColor");
+
+}
 /**
  * Setup the fragment and vertex shaders
  */
-function setupShaders() {
-  vertexShader = loadShaderFromDOM("shader-vs");
-  fragmentShader = loadShaderFromDOM("shader-fs");
+function setupCubeShaders() {
+  vertexShader = loadShaderFromDOM("cube_shader-vs");
+  fragmentShader = loadShaderFromDOM("cube_shader-fs");
   
   shaderProgram = gl.createProgram();
   gl.attachShader(shaderProgram, vertexShader);
@@ -170,11 +336,11 @@ function setupShaders() {
 
   
   shaderProgram.texCoordAttribute = gl.getAttribLocation(shaderProgram, "aTexCoord");
-  console.log("Tex coord attrib: ", shaderProgram.texCoordAttribute);
+  // console.log("Tex coord attrib: ", shaderProgram.texCoordAttribute);
   gl.enableVertexAttribArray(shaderProgram.texCoordAttribute);
     
   shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-  console.log("Vertex attrib: ", shaderProgram.vertexPositionAttribute);
+  // console.log("Vertex attrib: ", shaderProgram.vertexPositionAttribute);
   gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
     
   shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
@@ -206,14 +372,31 @@ function drawCube(){
   // Draw the cube.
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeTriIndexBuffer);
-  setMatrixUniforms();
   gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
 }
+
+function drawTeapot(){
+  gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+  gl.vertexAttribPointer(shaderProgramTea.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, 
+    gl.FLOAT, false, 0, 0);      
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+  gl.vertexAttribPointer(shaderProgramTea.vertexNormalAttribute, 
+                              teapotVertexNormalBuffer.itemSize,
+                              gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+  gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+ }
 
 /**
  * Draw call that applies matrix transformations to cube
  */
 function draw() { 
+
+    if(!loaded)
+      return;
+
     var transformVec = vec3.create();
   
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -221,16 +404,36 @@ function draw() {
 
     // We'll use perspective 
     mat4.perspective(pMatrix,degToRad(45), gl.viewportWidth / gl.viewportHeight, 0.1, 200.0);
- 
-    //Draw 
-    mvPushMatrix();
-    vec3.set(transformVec,0.0,0.0,-10.0);
-    mat4.translate(mvMatrix, mvMatrix,transformVec);
-    mat4.rotateX(mvMatrix,mvMatrix,modelXRotationRadians);
-    mat4.rotateY(mvMatrix,mvMatrix,modelYRotationRadians);
-    setMatrixUniforms();    
-    drawCube();
-    mvPopMatrix();
+  
+    // We want to look down -z, so create a lookat point in that direction    
+    vec3.add(viewPt, eyePt, viewDir);
+    // Then generate the lookat matrix and initialize the MV matrix to that view
+    mat4.lookAt(mvMatrix,eyePt,viewPt,up);    
+
+    //Draw Cube 
+    if(useCube){
+      setupCubeShaders();
+      mvPushMatrix();
+      vec3.set(transformVec,0.0,0.0,-10.0);
+      mat4.translate(mvMatrix, mvMatrix,transformVec);
+      mat4.rotateX(mvMatrix,mvMatrix,modelXRotationRadians);
+      mat4.rotateY(mvMatrix,mvMatrix,modelYRotationRadians);
+    
+      setCubeMatrixUniforms();    
+      drawCube();
+      mvPopMatrix();
+    }
+    
+    if(useTeapot){
+      setupTeapotShaders();
+      mvPushMatrix();
+      uploadLightsToShader([20,20,20],[0.0,0.0,0.0],[1.0,1.0,1.0],[1.0,1.0,1.0]);
+
+      setTeapotMatrixUniforms();
+      drawTeapot();
+      mvPopMatrix();
+    }
+    
   
 }
 
@@ -317,13 +520,38 @@ function handleTextureLoaded(image, texture) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
+function setupTeapotBuffers(){
+  
+  teapotVertexPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotVertex), gl.STATIC_DRAW);
+  teapotVertexPositionBuffer.itemSize = 3;
+  teapotVertexPositionBuffer.numItems = teapotVertex.length/3;
+  console.log("vertices: ", teapotVertexPositionBuffer.numItems);
+  
+  teapotVertexNormalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotNormal), gl.STATIC_DRAW);
+  teapotVertexNormalBuffer.itemSize = 3;
+  teapotVertexNormalBuffer.numItems = teapotNormal.length/3;
+  console.log("normal: ", teapotVertexNormalBuffer.numItems);
+
+  teapotVertexIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotFaceIndex), gl.STATIC_DRAW);
+  teapotVertexIndexBuffer.itemSize = 1;
+  teapotVertexIndexBuffer.numItems = teapotFaceIndex.length;
+  console.log("face indices: ", teapotVertexIndexBuffer.numItems);
+
+}
+
 /**
  * Sets up buffers for cube.
  */
 /**
  * Populate buffers with data
  */
-function setupBuffers() {
+function setupCubeBuffers() {
 
   // Create a buffer for the cube's vertices.
 
@@ -455,9 +683,9 @@ function setupBuffers() {
   gl = createGLContext(canvas);
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
-    
-  setupShaders();
-  setupBuffers();
+  readTextFile("teapot_0.obj", storeTeapot)
+  //setupShaders();
+  setupCubeBuffers();
   setupTextures();
   tick();
 }
