@@ -15,7 +15,7 @@ var cubeVertexBuffer;
 var cubeTriIndexBuffer;
 
 // View parameters
-var eyePt = vec3.fromValues(0.0,0.0,10);
+var eyePt = vec3.fromValues(0.0,0.0,1.0);
 var viewDir = vec3.fromValues(0.0,0.0,-1.0);
 var up = vec3.fromValues(0.0,1.0,0.0);
 var viewPt = vec3.fromValues(0.0,0.0,0.0);
@@ -33,8 +33,18 @@ var mvMatrixStack = [];
 
 // Create a place to store the texture
 
-var cubeImage;
-var cubeTexture;
+var cubeImage1;
+var cubeImage2;
+var cubeImage3;
+var cubeImage4;
+var cubeImage5;
+var cubeImage6;
+var cubeTexture1;
+var cubeTexture2;
+var cubeTexture3;
+var cubeTexture4;
+var cubeTexture5;
+var cubeTexture6;
 
 var teapotVertex = [];
 var teapotFaceIndex = [];
@@ -347,6 +357,17 @@ function setupCubeShaders() {
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
 }
 
+function drawCubeTexture(textureUnit, cubeTexture ,side){
+  gl.activeTexture(textureUnit );
+  gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
+  gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), side);
+
+  // Draw the cube.
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeTriIndexBuffer);
+  gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 12*(side-1) );
+}
+
 /**
  * Draw a cube based on buffers.
  */
@@ -365,14 +386,13 @@ function drawCube(){
 
   // Specify the texture to map onto the faces.
 
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
-  gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+  drawCubeTexture(gl.TEXTURE1, cubeTexture1, 1);
+  drawCubeTexture(gl.TEXTURE2, cubeTexture2, 2);
+  drawCubeTexture(gl.TEXTURE3, cubeTexture3, 3);
+  drawCubeTexture(gl.TEXTURE4, cubeTexture4, 4);
+  drawCubeTexture(gl.TEXTURE5, cubeTexture5, 5);
+  drawCubeTexture(gl.TEXTURE6, cubeTexture6, 6);
 
-  // Draw the cube.
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeTriIndexBuffer);
-  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
 }
 
 function drawTeapot(){
@@ -414,7 +434,7 @@ function draw() {
     if(useCube){
       setupCubeShaders();
       mvPushMatrix();
-      vec3.set(transformVec,0.0,0.0,-10.0);
+      vec3.set(transformVec,0.0,0.0,0.0);
       mat4.translate(mvMatrix, mvMatrix,transformVec);
       mat4.rotateX(mvMatrix,mvMatrix,modelXRotationRadians);
       mat4.rotateY(mvMatrix,mvMatrix,modelYRotationRadians);
@@ -427,8 +447,11 @@ function draw() {
     if(useTeapot){
       setupTeapotShaders();
       mvPushMatrix();
-      uploadLightsToShader([20,20,20],[0.0,0.0,0.0],[1.0,1.0,1.0],[1.0,1.0,1.0]);
-
+      uploadLightsToShader([1,1,1],[0.0,0.0,0.0],[1.0,1.0,1.0],[1.0,1.0,1.0]);
+      vec3.set(transformVec,0.06,0.06,0.06);
+      mat4.scale(mvMatrix, mvMatrix,transformVec);
+      vec3.set(transformVec,0.0,-2.0,0.0);
+      mat4.translate(mvMatrix, mvMatrix,transformVec);
       setTeapotMatrixUniforms();
       drawTeapot();
       mvPopMatrix();
@@ -447,17 +470,17 @@ function animate() {
     }
     else
     {
-        now=Date.now();
-        // Convert to seconds
-        now *= 0.001;
-        // Subtract the previous time from the current time
-        var deltaTime = now - then;
-        // Remember the current time for the next frame.
-        then = now;
+      now=Date.now();
+      // Convert to seconds
+      now *= 0.001;
+      // Subtract the previous time from the current time
+      var deltaTime = now - then;
+      // Remember the current time for the next frame.
+      then = now;
 
-        //Animate the rotation
-        modelXRotationRadians += 1.2 * deltaTime;
-        modelYRotationRadians += 0.7 * deltaTime;  
+      //Animate the rotation
+      modelXRotationRadians += 0.3 * deltaTime;
+      modelYRotationRadians += 0.3 * deltaTime;  
     }
 }
 
@@ -467,24 +490,61 @@ function animate() {
 function setupTextures() {
 
   var imagesURL = [
-    "canary/neg-x.png",
-    "canary/neg-y.png",
     "canary/neg-z.png",
     "canary/pos-z.png",
     "canary/pos-y.png",
-    "canary/pos-x.png"
+    "canary/neg-y.png",
+    "canary/pos-x.png",
+    "canary/neg-x.png"
   ];
 
-  cubeTexture = gl.createTexture();
- gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
-// Fill the texture with a 1x1 blue pixel.
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-              new Uint8Array([0, 0, 255, 255]));
+  var red = new Uint8Array([255, 0, 0, 255]);
+  var green = new Uint8Array([0, 255, 0, 255]);
+  var blue = new Uint8Array([0, 0, 255, 255]);
+  var cyan = new Uint8Array([0, 255, 255, 255]);
+  var magenta = new Uint8Array([255, 0, 255, 255]);
+  var yellow = new Uint8Array([255, 255, 0, 255]);
+  
 
-  cubeImage = new Image();
-  cubeImage.onload = function() { handleTextureLoaded(cubeImage, cubeTexture); }
-  cubeImage.src = imagesURL[0];
-   // https://goo.gl/photos/SUo7Zz9US1AKhZq49
+  cubeTexture1 = gl.createTexture();
+  cubeTexture2 = gl.createTexture();
+  cubeTexture3 = gl.createTexture();
+  cubeTexture4 = gl.createTexture();
+  cubeTexture5 = gl.createTexture();
+  cubeTexture6 = gl.createTexture();
+
+  // setupCubeEachSideColor(cubeTexture1, red );
+  // setupCubeEachSideColor(cubeTexture2, green );
+  // setupCubeEachSideColor(cubeTexture3, blue );
+  // setupCubeEachSideColor(cubeTexture4, cyan );
+  // setupCubeEachSideColor(cubeTexture5, magenta );
+  // setupCubeEachSideColor(cubeTexture6, yellow );
+
+  setupCubeEachSide(cubeTexture1, cubeImage1,imagesURL[0]);
+  setupCubeEachSide(cubeTexture2, cubeImage2,imagesURL[1]);
+  setupCubeEachSide(cubeTexture3, cubeImage3,imagesURL[2]);
+  setupCubeEachSide(cubeTexture4, cubeImage4,imagesURL[3]);
+  setupCubeEachSide(cubeTexture5, cubeImage5,imagesURL[4]);
+  setupCubeEachSide(cubeTexture6, cubeImage6,imagesURL[5]);
+  
+}
+
+function setupCubeEachSideColor(tex, color ){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+ // Fill the texture with a 1x1 blue pixel.
+ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, color);
+}
+
+function setupCubeEachSide(tex, cubeImage, imageURL){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+ // Fill the texture with a 1x1 blue pixel.
+ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+               new Uint8Array([0, 0, 255, 255]));
+ 
+   cubeImage = new Image();
+   cubeImage.onload = function() { handleTextureLoaded(cubeImage, tex); }
+   cubeImage.src = imageURL;
+    // https://goo.gl/photos/SUo7Zz9US1AKhZq49
 }
 
 /**
@@ -615,35 +675,37 @@ function setupCubeBuffers() {
 
   var textureCoordinates = [
     // Front
-    0.0,  0.0,
-    1.0,  0.0,
+    
     1.0,  1.0,
     0.0,  1.0,
+    0.0,  0.0,
+    1.0,  0.0,
     // Back
+    0.0,  1.0,
     0.0,  0.0,
     1.0,  0.0,
     1.0,  1.0,
-    0.0,  1.0,
     // Top
+    0.0,  1.0,
     0.0,  0.0,
     1.0,  0.0,
     1.0,  1.0,
-    0.0,  1.0,
     // Bottom
     0.0,  0.0,
     1.0,  0.0,
     1.0,  1.0,
     0.0,  1.0,
     // Right
+    0.0,  1.0,
     0.0,  0.0,
     1.0,  0.0,
+    1.0,  1.0,
+    
+    // Left
     1.0,  1.0,
     0.0,  1.0,
-    // Left
     0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0
+    1.0,  0.0
   ];
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
@@ -696,6 +758,6 @@ function setupCubeBuffers() {
 function tick() {
     requestAnimFrame(tick);
     draw();
-    animate();
+   animate();
 }
 
