@@ -1,7 +1,7 @@
 <!DOCTYPE HTML> 
 <html lang="en"> 
 <head>
-<title>Hello Texture </title>
+<title>Hello Teapot </title>
 <meta charset="utf-8"> 
 </head>
 
@@ -108,9 +108,21 @@ void main(void) {
 
 <script src="gl-matrix-min.js"></script> 
 <script src="webgl-utils.js"></script>   
-<script src="HelloTexture.js"></script> 
+<script src="Teapot.js"></script> 
 <script src="readText.js"></script>
+<style>
+  .introduction{
+      vertical-align: top;
+      display: inline-block;
+      border: 1px solid red;
+      padding: 10px;
+
+  }
+</style>
 <body onload="startup();">
 <canvas id="myGLCanvas" width="800" height="800"></canvas>
+<div class="introduction">
+  <h3>Use left and right to control the view</h3>
+</div>
 </body>
 </html>

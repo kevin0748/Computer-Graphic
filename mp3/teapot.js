@@ -31,8 +31,6 @@ var nMatrix = mat3.create();
 
 var mvMatrixStack = [];
 
-// Create a place to store the texture
-
 var cubeImage1;
 var cubeImage2;
 var cubeImage3;
@@ -46,6 +44,7 @@ var cubeTexture4;
 var cubeTexture5;
 var cubeTexture6;
 
+// create array to store teapot information
 var teapotVertex = [];
 var teapotFaceIndex = [];
 var teapotNormal = [];
@@ -54,8 +53,10 @@ var teapotVertexPositionBuffer;
 var teapotVertexNormalBuffer;
 var teapotVertexIndexBuffer;
 
+// keep track of the status of loading teapot.obj
 var loaded = false;
 
+// draw cube and teapot or not
 var useCube = true;
 var useTeapot = true;
 
@@ -65,6 +66,9 @@ var then =0;
 var modelXRotationRadians = degToRad(0);
 var modelYRotationRadians = degToRad(0);
 
+/**
+ * store the teapot vertex, faceIndex, normal
+ */
 function storeTeapot(input) {
   var lines = input.match(/[^\n\r]+/gi);
   // console.log(lines);
@@ -96,6 +100,7 @@ function storeTeapot(input) {
   var u = vec3.create();
   var v = vec3.create();
 
+  // calculate triangle normal vector
   for(var i = 0 ; i<teapotFaceIndex.length ; i+=3){
     var f1 = teapotFaceIndex[i];
     var f2 = teapotFaceIndex[i+1];
@@ -121,6 +126,7 @@ function storeTeapot(input) {
     teapotNormal.push(0);
   }
 
+  // caucalte vertex normal vector
   for(var i=0 ; i<numVertex ; i++){
     var totalNormal = vec3.create();
     var temp = vec3.create();
@@ -190,7 +196,7 @@ function mvPopMatrix() {
 }
 
 /**
- * Sends projection/modelview matrices to shader
+ * Sends projection/modelview matrices to cube shader
  */
 function setCubeMatrixUniforms() {
   gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
@@ -198,6 +204,9 @@ function setCubeMatrixUniforms() {
       false, pMatrix);
 }
 
+/**
+ * Sends projection/modelview matrices to teapot shader
+ */
 function setTeapotMatrixUniforms() {
   gl.uniformMatrix4fv(shaderProgramTea.mvMatrixUniform, false, mvMatrix);
   gl.uniformMatrix4fv(shaderProgramTea.pMatrixUniform, 
@@ -205,6 +214,9 @@ function setTeapotMatrixUniforms() {
   uploadNormalMatrixToShader();
 }
 
+/**
+ * upload lights to shader in .html file
+ */
 function uploadLightsToShader(loc,a,d,s) {
   gl.uniform3fv(shaderProgramTea.uniformLightPositionLoc, loc);
   gl.uniform3fv(shaderProgramTea.uniformAmbientLightColorLoc, a);
@@ -289,6 +301,9 @@ function loadShaderFromDOM(id) {
   return shader;
 }
 
+/**
+ * set up cube and teapot shaders
+ */
 function setupShaders(){
   if(useCube)
     setupCubeShaders();
@@ -296,6 +311,9 @@ function setupShaders(){
     setupTeapotShaders();
 }
 
+/**
+ * set up teapot shaders
+ */
 function setupTeapotShaders(){
   vertexShader = loadShaderFromDOM("teapot_shader-vs");
   fragmentShader = loadShaderFromDOM("teapot_shader-fs");
@@ -327,7 +345,7 @@ function setupTeapotShaders(){
 
 }
 /**
- * Setup the fragment and vertex shaders
+ * Setup cube shaders
  */
 function setupCubeShaders() {
   vertexShader = loadShaderFromDOM("cube_shader-vs");
@@ -357,12 +375,14 @@ function setupCubeShaders() {
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
 }
 
+/**
+ * Draw each side of the cube texture
+ */
 function drawCubeTexture(textureUnit, cubeTexture ,side){
+  
   gl.activeTexture(textureUnit );
   gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), side);
-
-  // Draw the cube.
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeTriIndexBuffer);
   gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 12*(side-1) );
@@ -430,7 +450,7 @@ function draw() {
     // Then generate the lookat matrix and initialize the MV matrix to that view
     mat4.lookAt(mvMatrix,eyePt,viewPt,up);    
 
-    //Draw Cube 
+    // Draw Cube 
     if(useCube){
       setupCubeShaders();
       mvPushMatrix();
@@ -444,10 +464,11 @@ function draw() {
       mvPopMatrix();
     }
     
+    // Draw teapot
     if(useTeapot){
       setupTeapotShaders();
       mvPushMatrix();
-      uploadLightsToShader([1,1,1],[0.0,0.0,0.0],[1.0,1.0,1.0],[1.0,1.0,1.0]);
+      uploadLightsToShader([1,1,1],[0.0,0.0,0.0],[0.8,1.0,1.0],[0.2,0.2,0.2]);
       vec3.set(transformVec,0.06,0.06,0.06);
       mat4.scale(mvMatrix, mvMatrix,transformVec);
       vec3.set(transformVec,0.0,-2.0,0.0);
@@ -479,8 +500,12 @@ function animate() {
       then = now;
 
       //Animate the rotation
-      modelXRotationRadians += 0.3 * deltaTime;
-      modelYRotationRadians += 0.3 * deltaTime;  
+      // modelXRotationRadians += 0.3 * deltaTime;
+      // modelYRotationRadians += 0.3 * deltaTime;  
+      var origin = vec3.create();
+      vec3.set(origin,0.0,0.0,0.0);
+      vec3.rotateY(eyePt,eyePt,origin,degToRad(1))
+      vec3.subtract(viewDir,origin,eyePt);
     }
 }
 
@@ -535,6 +560,9 @@ function setupCubeEachSideColor(tex, color ){
  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, color);
 }
 
+/**
+ * Set up texture at each side of the cube.
+ */
 function setupCubeEachSide(tex, cubeImage, imageURL){
   gl.bindTexture(gl.TEXTURE_2D, tex);
  // Fill the texture with a 1x1 blue pixel.
@@ -580,6 +608,9 @@ function handleTextureLoaded(image, texture) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
+/**
+ * Set up the teapot buffers
+ */
 function setupTeapotBuffers(){
   
   teapotVertexPositionBuffer = gl.createBuffer();
@@ -736,6 +767,29 @@ function setupCubeBuffers() {
       new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
 }
 
+/**
+ * Capture keyboard for control the movement of the plane.
+ */
+function keyboardBinding(){
+  document.addEventListener('keydown', function(event) {
+    // left
+    if (event.keyCode == 37) {
+      var origin = vec3.create();
+      vec3.set(origin,0.0,0.0,0.0);
+      vec3.rotateY(eyePt,eyePt,origin,degToRad(2))
+      vec3.subtract(viewDir,origin,eyePt);
+    }
+    // right
+    else if (event.keyCode == 39) {
+      var origin = vec3.create();
+      vec3.set(origin,0.0,0.0,0.0);
+      vec3.rotateY(eyePt,eyePt,origin,degToRad(-2))
+      vec3.subtract(viewDir,origin,eyePt);
+    }
+    
+}, true);
+}
+
 
 /**
  * Startup function called from html code to start program.
@@ -749,6 +803,7 @@ function setupCubeBuffers() {
   //setupShaders();
   setupCubeBuffers();
   setupTextures();
+  keyboardBinding();
   tick();
 }
 
@@ -758,6 +813,6 @@ function setupCubeBuffers() {
 function tick() {
     requestAnimFrame(tick);
     draw();
-   animate();
+   //animate();
 }
 
