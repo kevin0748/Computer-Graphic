@@ -29,6 +29,8 @@ var pMatrix = mat4.create();
 // Create the normal
 var nMatrix = mat3.create();
 
+var inverseViewTransform = mat3.create();
+
 var mvMatrixStack = [];
 
 var cubeImage1;
@@ -43,6 +45,8 @@ var cubeTexture3;
 var cubeTexture4;
 var cubeTexture5;
 var cubeTexture6;
+var cubeMap;
+var mode=1;
 
 // create array to store teapot information
 var teapotVertex = [];
@@ -211,7 +215,9 @@ function setTeapotMatrixUniforms() {
   gl.uniformMatrix4fv(shaderProgramTea.mvMatrixUniform, false, mvMatrix);
   gl.uniformMatrix4fv(shaderProgramTea.pMatrixUniform, 
       false, pMatrix);
+  gl.uniformMatrix3fv(shaderProgramTea.inverseViewTransformUniform, false, inverseViewTransform);
   uploadNormalMatrixToShader();
+  gl.uniform1i(gl.getUniformLocation(shaderProgramTea, "drawWhich"), mode);
 }
 
 /**
@@ -342,6 +348,7 @@ function setupTeapotShaders(){
   shaderProgramTea.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uAmbientLightColor");  
   shaderProgramTea.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uDiffuseLightColor");
   shaderProgramTea.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgramTea, "uSpecularLightColor");
+  shaderProgramTea.inverseViewTransformUniform = gl.getUniformLocation(shaderProgramTea, "uInverseViewTransform")
 
 }
 /**
@@ -453,29 +460,25 @@ function draw() {
     // Draw Cube 
     if(useCube){
       setupCubeShaders();
-      mvPushMatrix();
-      vec3.set(transformVec,0.0,0.0,0.0);
-      mat4.translate(mvMatrix, mvMatrix,transformVec);
-      mat4.rotateX(mvMatrix,mvMatrix,modelXRotationRadians);
-      mat4.rotateY(mvMatrix,mvMatrix,modelYRotationRadians);
-    
       setCubeMatrixUniforms();    
       drawCube();
-      mvPopMatrix();
     }
     
     // Draw teapot
     if(useTeapot){
       setupTeapotShaders();
-      mvPushMatrix();
+      environmentCubeMap();
       uploadLightsToShader([1,1,1],[0.0,0.0,0.0],[0.8,1.0,1.0],[0.2,0.2,0.2]);
+      mat3.fromMat4(inverseViewTransform, mvMatrix);
+     // mat3.invert(inverseViewTransform,inverseViewTransform);
       vec3.set(transformVec,0.06,0.06,0.06);
       mat4.scale(mvMatrix, mvMatrix,transformVec);
-      vec3.set(transformVec,0.0,-2.0,0.0);
+      vec3.set(transformVec,0.0,0.0,0.0);
       mat4.translate(mvMatrix, mvMatrix,transformVec);
+      mat4.rotateX(mvMatrix,mvMatrix,modelXRotationRadians);
+      mat4.rotateY(mvMatrix,mvMatrix,modelYRotationRadians);
       setTeapotMatrixUniforms();
       drawTeapot();
-      mvPopMatrix();
     }
     
   
@@ -515,12 +518,12 @@ function animate() {
 function setupTextures() {
 
   var imagesURL = [
-    "canary/neg-z.png",
     "canary/pos-z.png",
+    "canary/neg-z.png",
     "canary/pos-y.png",
     "canary/neg-y.png",
-    "canary/pos-x.png",
-    "canary/neg-x.png"
+    "canary/neg-x.png",
+    "canary/pos-x.png"
   ];
 
   var red = new Uint8Array([255, 0, 0, 255]);
@@ -552,12 +555,63 @@ function setupTextures() {
   setupCubeEachSide(cubeTexture5, cubeImage5,imagesURL[4]);
   setupCubeEachSide(cubeTexture6, cubeImage6,imagesURL[5]);
   
+  setupCubeMap(imagesURL);
+
 }
 
 function setupCubeEachSideColor(tex, color ){
   gl.bindTexture(gl.TEXTURE_2D, tex);
  // Fill the texture with a 1x1 blue pixel.
  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, color);
+}
+
+function setupCubeMap(urls){
+  var ct = 0;
+  var img = new Array(6);
+  for (var i = 0; i < 6; i++) {
+      img[i] = new Image();
+      img[i].onload = function() {
+          ct++;
+          if (ct == 6) {
+              cubeMap = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMap);
+              var targets = [
+                 gl.TEXTURE_CUBE_MAP_POSITIVE_Z, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,  
+                 gl.TEXTURE_CUBE_MAP_POSITIVE_Y, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 
+                 gl.TEXTURE_CUBE_MAP_NEGATIVE_X, gl.TEXTURE_CUBE_MAP_POSITIVE_X,     
+              ];
+              try {
+                  for (var j = 0; j < 6; j++) {
+                      gl.texImage2D(targets[j], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img[j]);
+                      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                  }
+              } catch(e) {
+                  document.getElementById("canvas-holder").innerHTML = "ERROR: CANNOT ACCESS CUBEMAP TEXTURE IMAGES";
+              }
+              gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+              draw();
+          }
+      }
+      img[i].onerror = function() {
+           document.getElementById("canvas-holder").innerHTML = "ERROR WHILE TRYING TO LOAD CUBEMAP TEXTURE";
+      }
+      img[i].src = urls[i];
+  }
+  
+}
+
+function environmentCubeMap(){
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
+  // gl.vertexAttribPointer(shaderProgramTea.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+  
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMap);
+  // gl.uniform1i(gl.getUniformLocation(shaderProgramTea, "eMap"), gl.TEXTURE0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeTriIndexBuffer);
+  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0 );
+  
 }
 
 /**
@@ -787,6 +841,23 @@ function keyboardBinding(){
       vec3.subtract(viewDir,origin,eyePt);
     }
     
+    //w
+    if(event.keyCode == 87){
+      modelXRotationRadians -= 0.05;
+    }
+    //s
+    if(event.keyCode == 83){
+      modelXRotationRadians += 0.05;
+    }
+    //a
+    if(event.keyCode == 65){
+      modelYRotationRadians -= 0.05;
+    }
+    //d
+    if(event.keyCode == 68){
+      modelYRotationRadians += 0.05;
+    }
+
 }, true);
 }
 
@@ -796,6 +867,12 @@ function keyboardBinding(){
  */
  function startup() {
   canvas = document.getElementById("myGLCanvas");
+  document.getElementById("phong").onclick = function(){
+    mode = 0;
+  };
+  document.getElementById("reflect").onclick = function(){
+    mode = 1;
+  };
   gl = createGLContext(canvas);
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);

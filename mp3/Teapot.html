@@ -54,7 +54,7 @@ void main() {
    vPosition = vertexPositionEye4.xyz / vertexPositionEye4.w;
    //Calaulate the normal
    vNormal = normalize(uNMatrix * aVertexNormal);
-  
+
    gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
    
 }
@@ -70,11 +70,21 @@ uniform vec3 uAmbientLightColor;
 uniform vec3 uDiffuseLightColor;
 uniform vec3 uSpecularLightColor;
 
+uniform mat3 uInverseViewTransform;
+uniform int drawWhich;
+uniform samplerCube eMap;
+
 const float shininess = 32.0;
 
 
 void main(void) {
-       
+
+   vec3  V = -vPosition;
+   vec3 R = -reflect(V,vNormal);
+   vec3 T = uInverseViewTransform * R;
+   vec4 texColor = textureCube(eMap, T);
+   
+
    vec4 vColor;
    // Calculate the vector (l) to the light source
    vec3 vectorToLightSource = normalize(uLightPosition - vPosition);
@@ -101,8 +111,9 @@ void main(void) {
    vColor = vec4(((uAmbientLightColor)
                + (uDiffuseLightColor) * diffuseLightWeightning
                + (uSpecularLightColor) * specularLightWeightning),1.0);
-
-   gl_FragColor = vColor;
+   
+   if(drawWhich ==0) gl_FragColor = vColor;
+   else if(drawWhich==1) gl_FragColor = texColor;
 }
 </script>
 
@@ -123,6 +134,17 @@ void main(void) {
 <canvas id="myGLCanvas" width="800" height="800"></canvas>
 <div class="introduction">
   <h3>Use left and right to control the view</h3>
+  <h3>Use "w a s d" to control the teapot</h3>
+  Please select which mode to use:
+  <div>
+	<input type="radio" id="phong"
+	 name="shader" value="phong">
+	shading
+
+	<input type="radio" id="reflect"
+	 name="shader" value="reflect" checked>
+	reflective
+  </div>
 </div>
 </body>
 </html>
