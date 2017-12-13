@@ -12,7 +12,7 @@ var sphereVertexPositionBuffer;
 var sphereVertexNormalBuffer;
 
 // View parameters
-var eyePt = vec3.fromValues(0.0,0.0,3.0);
+var eyePt = vec3.fromValues(0.0,0.0,6.0);
 var viewDir = vec3.fromValues(0.0,0.0,-1.0);
 var up = vec3.fromValues(0.0,1.0,0.0);
 var viewPt = vec3.fromValues(0.0,0.0,0.0);
@@ -28,10 +28,13 @@ var pMatrix = mat4.create();
 
 var mvMatrixStack = [];
 
+// Force
 var g = [0,-10,0];
-var sphereList = [];
-var position = [0,0,0,];
+var dragForce = 0.5;
 
+// position, velocity
+var particles = [];
+var totalPNum = 0;
 
 //-------------------------------------------------------------------------
 function setupSphereBuffers() {
@@ -107,10 +110,18 @@ function mvPopMatrix() {
 }
 
 //----------------------------------------------------------------------------------
-function setMatrixUniforms() {
-    uploadModelViewMatrixToShader();
-    uploadNormalMatrixToShader();
-    uploadProjectionMatrixToShader();
+function setMatrixUniforms(color) {
+  // Set up light parameters
+  var Ia = vec3.fromValues(0.0,0.0,0.0)
+  var Id = vec3.fromValues(color[0],color[1],color[2]);
+  var Is = vec3.fromValues(0.2,0.2,0.2);
+  
+  var lightPosEye = vec3.fromValues(0.0,0.0,-1.0);
+
+  uploadModelViewMatrixToShader();
+  uploadNormalMatrixToShader();
+  uploadProjectionMatrixToShader();
+  uploadLightsToShader(lightPosEye,Ia,Id,Is);
 }
 
 //----------------------------------------------------------------------------------
@@ -208,11 +219,7 @@ function setupShaders() {
   shaderProgram.uniformLightPositionLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");    
   shaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientLightColor");  
   shaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseLightColor");
-  shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
-    
-  shaderProgram.uniformAmbientMatColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientMatColor");  
-  shaderProgram.uniformDiffuseMatColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseMatColor");
-  shaderProgram.uniformSpecularMatColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularMatColor");    
+  shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor"); 
     
 }
 
@@ -225,12 +232,6 @@ function uploadLightsToShader(loc,a,d,s) {
   gl.uniform3fv(shaderProgram.uniformSpecularLightColorLoc, s);
 }
 
-//-------------------------------------------------------------------------
-function uploadMaterialToShader(a,d,s) {
-  gl.uniform3fv(shaderProgram.uniformAmbientMatColorLoc, a);
-  gl.uniform3fv(shaderProgram.uniformDiffuseMatColorLoc, d);
-  gl.uniform3fv(shaderProgram.uniformSpecularMatColorLoc, s);
-}
 
 
 //----------------------------------------------------------------------------------
@@ -239,13 +240,10 @@ function setupBuffers() {
 }
 
 //----------------------------------------------------------------------------------
-function draw() { 
+function draw(p) { 
     var translateVec = vec3.create();
     var transformVec = vec3.create();
   
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
     // We'll use perspective 
     mat4.perspective(pMatrix,degToRad(45), gl.viewportWidth / gl.viewportHeight, 0.1, 200.0);
 
@@ -254,29 +252,13 @@ function draw() {
     // Then generate the lookat matrix and initialize the MV matrix to that view
     mat4.lookAt(mvMatrix,eyePt,viewPt,up);    
  
-    // Set up light parameters
-    var Ia = vec3.fromValues(1.0,1.0,1.0);
-    var Id = vec3.fromValues(1.0,1.0,1.0);
-    var Is = vec3.fromValues(1.0,1.0,1.0);
     
-    var lightPosEye4 = vec4.fromValues(0.0,0.0,-1.0,1.0);
-    //lightPosEye4 = vec4.transformMat4(lightPosEye4,lightPosEye4,mvMatrix);
-    // console.log(vec4.str(lightPosEye4))
-    var lightPosEye = vec3.fromValues(lightPosEye4[0],lightPosEye4[1],lightPosEye4[2]);
-    
-    //draw Sun
-    // Set up material parameters    
-    var ka = vec3.fromValues(0.0,0.0,0.0);
-    var kd = vec3.fromValues(0.6,0.6,0.0);
-    var ks = vec3.fromValues(0.4,0.4,0.0);
     mvPushMatrix();
-    vec3.set(translateVec,position[0],position[1],position[2]);
+    vec3.set(translateVec,p.position[0],p.position[1],p.position[2]);
     mat4.translate(mvMatrix, mvMatrix,translateVec);
     vec3.set(transformVec,0.05,0.05,0.05);
-    mat4.scale(mvMatrix,mvMatrix,transformVec);
-    uploadLightsToShader(lightPosEye,Ia,Id,Is);
-    uploadMaterialToShader(ka,kd,ks);
-    setMatrixUniforms();
+    mat4.scale(mvMatrix,mvMatrix,transformVec);  
+    setMatrixUniforms(p.color);
     drawSphere();
     mvPopMatrix();
     
@@ -284,11 +266,97 @@ function draw() {
   
 }
 
-//----------------------------------------------------------------------------------
-function animate() {
+
+function init(){
+  createParticles(50);
+  keyboardBinding();
+}
+
+function createParticles(num){
+  for(i=0 ; i<num ; i++){
+    var p = new Object();
+    p.position = [(Math.random()>0.5?1:-1)*Math.random(),(Math.random()>0.5?1:-1)*Math.random(),(Math.random()>0.5?1:-1)*Math.random()]; 
+    p.velocity = [(Math.random()>0.5?1:-1)*Math.random(),(Math.random()>0.5?1:-1)*Math.random(),(Math.random()>0.5?1:-1)*Math.random()]; 
+    p.color = [Math.random(),Math.random(),Math.random()];
+    p.time = Date.now();
+    particles.push(p);  
+    
+  }
+  particles[0].color = [0,0,1];
+  particles[1].color = [1,0,0];
+  particles[2].color = [0,1,0];
+
+  totalPNum += num;
+}
   
-  if(position[1]>-1)
-    position[1] += 0.001*g[1];
+
+//----------------------------------------------------------------------------------
+function animate(p) {
+  
+  // position update
+  for(d = 0; d<3 ; d++){
+    var newTime = Date.now();
+    p.position[d] +=  p.velocity[d] * (newTime - p.time) * 0.001;     
+  }
+
+
+  // collision onto x=1 
+  if(p.position[0]>=1){
+    p.velocity[0] = p.velocity[0] * -0.9;
+    p.position[0] = 1;
+  }
+  // collision onto x=-1 
+  else if ( p.position[0]<=-1){
+    p.velocity[0] = p.velocity[0] * -0.9;
+    p.position[0] = -1;
+  }
+  // collision onto y=1 
+  if(p.position[1]>=1){
+    p.velocity[1] = p.velocity[1] * -0.9;
+    p.position[1] = 1;
+  }
+  // collision onto y=-1 
+  else if ( p.position[1]<=-1){
+    p.velocity[1] = p.velocity[1] * -0.9;
+    p.position[1] = -1;
+  }
+  // collision onto z=1 
+  if(p.position[2]>=1){
+    p.velocity[2] = p.velocity[2] * -0.9;
+    p.position[2] = 1;
+  }
+  // collision onto z=-1 
+  else if ( p.position[2]<=-1){
+    p.velocity[2] = p.velocity[2] * -0.9;
+    p.position[2] = -1;
+  }
+
+
+  // velocity update
+  for(d = 0 ; d<3 ; d++){
+    // p.velocity[d] = p.velocity[d] + g[d]*(newTime-p.time) ;
+    p.velocity[d] = p.velocity[d] + g[d]*(newTime-p.time) * 0.001;
+    
+  }
+
+  p.time = newTime;
+ 
+
+
+  
+}
+
+/**
+ * Capture keyboard for control the movement of the plane.
+ */
+function keyboardBinding(){
+  document.addEventListener('keydown', function(event) {
+    // press enter
+    if (event.keyCode == 13) {
+      createParticles(5);
+    }
+
+}, true);
 }
 
 //----------------------------------------------------------------------------------
@@ -299,13 +367,20 @@ function startup() {
   setupBuffers();
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
+  init();
   tick();
 }
 
 //----------------------------------------------------------------------------------
 function tick() {
     requestAnimFrame(tick);
-    draw();
-    animate();
+    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    for(i=0 ; i<totalPNum ; i++){
+      var p = particles[i]
+      draw(p);
+      animate(p);
+    }
+    // console.log(particles[0].velocity[1])
 }
 
