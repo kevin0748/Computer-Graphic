@@ -84,9 +84,22 @@ void main(void) {
 <script src="gl-matrix-min.js"></script> 
 <script src="webgl-utils.js"></script>
 <script src="simpleModeling.js"></script>  
-<script src="HelloSolarSystem3.js"></script>   
+<script src="Spheres.js"></script>   
+<style>
+	.introduction{
+			vertical-align: top;
+			display: inline-block;
+			border: 1px solid red;
+			padding: 10px;
+
+	}
+</style>
 <body onload="startup();">
  <canvas id="myGLCanvas" width="800" height="800"></canvas>
+ <div class="introduction">
+	<h3>Press Enter to create new particles</h3>
+	<h3>Press "r" to reset </h3>
+</div>
 </body>
 
 </html>

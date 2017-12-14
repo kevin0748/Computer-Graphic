@@ -282,11 +282,13 @@ function createParticles(num){
     particles.push(p);  
     
   }
-  particles[0].color = [0,0,1];
-  particles[1].color = [1,0,0];
-  particles[2].color = [0,1,0];
 
   totalPNum += num;
+}
+
+function resetParticles(){
+  particles = [];
+  totalPNum = 0;
 }
   
 
@@ -354,6 +356,10 @@ function keyboardBinding(){
     // press enter
     if (event.keyCode == 13) {
       createParticles(5);
+    }
+
+    if(event.keyCode == 82){
+      resetParticles();
     }
 
 }, true);
